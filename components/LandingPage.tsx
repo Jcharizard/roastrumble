@@ -25,19 +25,19 @@ export default function LandingPage({ onStartBattle }: LandingPageProps) {
   }, [])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-roast-dark to-black relative">
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 pb-32 bg-gradient-to-b from-roast-dark to-black relative">
       {/* Users Online Badge */}
-      <div className="absolute top-8 right-8 bg-roast-red/20 border-2 border-roast-red rounded-full px-6 py-3 animate-slide-up">
-        <p className="text-roast-cream font-bold">
-          🔥 <span className="text-2xl">{usersOnline}</span> <span className="text-sm">ONLINE</span>
+      <div className="absolute top-4 right-4 md:top-8 md:right-8 bg-roast-red/20 border-2 border-roast-red rounded-full px-4 py-2 md:px-6 md:py-3 animate-slide-up z-10">
+        <p className="text-roast-cream font-bold text-sm md:text-base">
+          🔥 <span className="text-xl md:text-2xl">{usersOnline}</span> <span className="text-xs md:text-sm">ONLINE</span>
         </p>
       </div>
 
       {/* Logo Section */}
-      <div className="text-center mb-12 animate-slide-up">
-        <div className="mb-8">
+      <div className="text-center mb-8 md:mb-12 mt-20 md:mt-0 animate-slide-up">
+        <div className="mb-6 md:mb-8">
           {/* Your logo image */}
-          <div className="w-48 h-48 mx-auto bg-roast-red rounded-full flex items-center justify-center fire-effect overflow-hidden">
+          <div className="w-32 h-32 md:w-48 md:h-48 mx-auto bg-roast-red rounded-full flex items-center justify-center fire-effect overflow-hidden">
             <img 
               src="/logo.png" 
               alt="RoastRumble Logo" 
@@ -55,11 +55,11 @@ export default function LandingPage({ onStartBattle }: LandingPageProps) {
           </div>
         </div>
         
-        <h1 className="text-7xl font-bold mb-4 text-roast-cream">
+        <h1 className="text-4xl md:text-7xl font-bold mb-4 text-roast-cream">
           ROAST RUMBLE
         </h1>
         
-        <p className="text-xl text-roast-cream/80 mb-8 max-w-2xl mx-auto">
+        <p className="text-base md:text-xl text-roast-cream/80 mb-6 md:mb-8 max-w-2xl mx-auto px-4">
           Battle random opponents in real-time freestyle rap battles.
           <br />
           No signup. No BS. Just bars. 🔥
@@ -69,13 +69,13 @@ export default function LandingPage({ onStartBattle }: LandingPageProps) {
       {/* CTA Button */}
       <button
         onClick={onStartBattle}
-        className="bg-roast-red hover:bg-roast-red/90 text-roast-cream font-bold text-2xl px-16 py-6 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-2xl shadow-roast-red/50"
+        className="bg-roast-red hover:bg-roast-red/90 text-roast-cream font-bold text-xl md:text-2xl px-10 py-4 md:px-16 md:py-6 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-2xl shadow-roast-red/50"
       >
         START BATTLING
       </button>
 
       {/* Features */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mt-12 md:mt-20 max-w-5xl px-4 mb-20">
         <div className="text-center p-6 bg-roast-dark/50 rounded-lg border border-roast-red/30">
           <div className="text-4xl mb-3">⚡</div>
           <h3 className="text-xl font-bold text-roast-cream mb-2">Instant Matches</h3>
@@ -96,10 +96,10 @@ export default function LandingPage({ onStartBattle }: LandingPageProps) {
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-4 text-center text-roast-cream/50 text-sm w-full px-4">
+      <div className="mt-auto pt-8 md:pt-12 text-center text-roast-cream/50 text-xs md:text-sm w-full px-4">
         <div className="max-w-4xl mx-auto">
-          <p className="mb-2">Made with 🔥 by a 16-year-old with a dream - @queefking3993 on ig</p>
-          <p className="mb-3">
+          <p className="mb-2 text-xs md:text-sm">Made with 🔥 by a 16-year-old with a dream - @queefking3993 on ig</p>
+          <p className="mb-3 text-xs md:text-sm">
             <a href="https://github.com/yourusername/roastrumble" target="_blank" rel="noopener noreferrer" className="hover:text-roast-red transition-colors">GitHub</a>
             {' • '}
             <a href="https://paypal.me/BigBoyJulio" target="_blank" rel="noopener noreferrer" className="hover:text-roast-red transition-colors">Donate</a>

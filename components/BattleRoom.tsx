@@ -344,7 +344,7 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
 
   const setupWebRTC = async (isInitiator: boolean, socket: Socket) => {
     try {
-      console.log(`Setting up WebRTC as ${isInitiator ? 'INITIATOR' : 'RECEIVER'}`)
+      console.log(`🎙️ Setting up WebRTC as ${isInitiator ? 'INITIATOR' : 'RECEIVER'}`)
 
       // Clean up any existing peer connection
       if (peerRef.current) {
@@ -366,6 +366,9 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
       // Wait a bit for cleanup to complete
       await new Promise(resolve => setTimeout(resolve, 100))
 
+      // Check if mic is available
+      console.log('🎙️ Requesting microphone access...')
+      
       // Get user's audio stream
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -374,8 +377,14 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
           autoGainControl: true,
         },
         video: false
+      }).catch((error) => {
+        console.error('❌ Microphone access denied or failed:', error)
+        alert('⚠️ Microphone access required!\n\nPlease allow microphone access to battle.\n\nClick OK and refresh the page, then allow mic access.')
+        throw error
       })
-      console.log('Got local audio stream')
+      
+      console.log('✅ Got local audio stream')
+      console.log('🔊 Audio tracks:', stream.getAudioTracks().length)
       localStreamRef.current = stream
       
       // DISABLE mic for BOTH players initially (will be enabled after initial countdown)
