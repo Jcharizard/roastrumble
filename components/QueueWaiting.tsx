@@ -16,6 +16,7 @@ export default function QueueWaiting({ nickname, onMatchFound, onCancel }: Queue
   const [queueSize, setQueueSize] = useState(0)
   const socketRef = useRef<Socket | null>(null)
   const hasInitialized = useRef(false)
+  const matchFoundRef = useRef(false) // Track if match was found
   const connectionId = useRef(`conn_${Date.now()}_${Math.random()}`)
 
   useEffect(() => {
@@ -60,7 +61,8 @@ export default function QueueWaiting({ nickname, onMatchFound, onCancel }: Queue
     })
 
     newSocket.on('match-found', ({ roomId, opponent }) => {
-      console.log('Match found!', roomId, opponent)
+      console.log('✅ Match found!', roomId, opponent)
+      matchFoundRef.current = true // Mark that match was found
       // Don't disconnect - pass socket to BattleRoom
       onMatchFound(roomId, newSocket)
     })
@@ -79,10 +81,14 @@ export default function QueueWaiting({ nickname, onMatchFound, onCancel }: Queue
 
     return () => {
       clearInterval(interval)
-      // Only cleanup if still connected (user cancelled, didn't get match)
-      if (newSocket && newSocket.connected) {
+      // CRITICAL: Only disconnect if match was NOT found
+      // If match was found, BattleRoom needs the socket!
+      if (!matchFoundRef.current && newSocket && newSocket.connected) {
+        console.log('🧹 QueueWaiting cleanup: No match found, disconnecting socket')
         newSocket.emit('leave-queue')
         newSocket.disconnect()
+      } else if (matchFoundRef.current) {
+        console.log('✅ QueueWaiting cleanup: Match found, keeping socket alive for BattleRoom')
       }
       hasInitialized.current = false
       socketRef.current = null
