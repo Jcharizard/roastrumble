@@ -10,10 +10,19 @@ const server = http.createServer(app);
 // CORS configuration
 app.use(cors());
 
+// Allow both www and non-www versions of the domain
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://roastrumble.com',
+  'https://www.roastrumble.com',
+  process.env.CLIENT_URL
+].filter(Boolean); // Remove any undefined values
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST']
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: false
   }
 });
 
