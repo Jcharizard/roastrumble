@@ -54,7 +54,14 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
     console.log('BattleRoom: Joining room', roomId)
     socket.emit('join-room', { roomId, nickname })
 
-    const handleBattleStart = ({ opponent, words, isInitiator, firstPlayer, hasMicPrivilege: serverMicPrivilege, selectedBeat }) => {
+    const handleBattleStart = ({ opponent, words, isInitiator, firstPlayer, hasMicPrivilege: serverMicPrivilege, selectedBeat }: {
+      opponent: string
+      words: string[]
+      isInitiator: boolean
+      firstPlayer: string
+      hasMicPrivilege: boolean
+      selectedBeat: string
+    }) => {
       console.log('Battle starting!', { opponent, words, isInitiator, firstPlayer, serverMicPrivilege, selectedBeat })
       setOpponentName(opponent)
       setBattleWords(words)
@@ -141,7 +148,7 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
       }, 3000) // 3 second initial wait
     }
 
-    const handleWebRTCSignal = (signal) => {
+    const handleWebRTCSignal = (signal: SimplePeer.SignalData) => {
       console.log('📡 Received WebRTC signal from opponent', signal.type || 'candidate')
       
       if (!peerRef.current) {
@@ -155,19 +162,13 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
         return
       }
       
-      // Check if peer is ready for signaling
-      if (peerRef.current._pc && peerRef.current._pc.signalingState) {
-        try {
-          peerRef.current.signal(signal)
-          console.log('✅ Signal processed successfully')
-        } catch (error) {
-          console.error('❌ Error signaling peer:', error)
-          // Queue if signaling failed
-          signalQueueRef.current.push(signal)
-        }
-      } else {
-        // Peer exists but not fully initialized, queue it
-        console.log('⏳ Peer exists but not ready, queuing signal')
+      // Try to signal the peer
+      try {
+        peerRef.current.signal(signal)
+        console.log('✅ Signal processed successfully')
+      } catch (error) {
+        console.error('❌ Error signaling peer:', error)
+        // Queue if signaling failed
         signalQueueRef.current.push(signal)
       }
     }
@@ -398,8 +399,7 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
             { urls: 'stun:stun3.l.google.com:19302' },
             { urls: 'stun:stun4.l.google.com:19302' }
           ],
-          iceCandidatePoolSize: 10,
-          sdpSemantics: 'unified-plan'
+          iceCandidatePoolSize: 10
         }
       })
 

@@ -45,7 +45,10 @@ export default function LandingPage({ onStartBattle }: LandingPageProps) {
               onError={(e) => {
                 // Fallback to emoji if logo not found
                 e.currentTarget.style.display = 'none'
-                e.currentTarget.nextElementSibling.style.display = 'block'
+                const nextElement = e.currentTarget.nextElementSibling
+                if (nextElement instanceof HTMLElement) {
+                  nextElement.style.display = 'block'
+                }
               }}
             />
             <div className="text-6xl hidden">🎤🔥</div>
