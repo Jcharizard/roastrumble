@@ -95,6 +95,10 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
            countdownIntervalRef.current = setInterval(() => {
              currentCount -= 1
              setCountdown(currentCount)
+             
+             // Send heartbeat to keep connection alive (especially for mobile browsers)
+             socket.emit('heartbeat', { roomId })
+             
              if (currentCount <= 0) {
                clearInterval(countdownIntervalRef.current!)
                countdownIntervalRef.current = null
@@ -243,6 +247,10 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
       countdownIntervalRef.current = setInterval(() => {
         currentCount -= 1
         setCountdown(currentCount)
+        
+        // Send heartbeat to keep connection alive (especially for mobile browsers)
+        socket.emit('heartbeat', { roomId })
+        
         if (currentCount <= 0) {
           clearInterval(countdownIntervalRef.current!)
           countdownIntervalRef.current = null
@@ -659,6 +667,10 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
     countdownIntervalRef.current = setInterval(() => {
       currentCount -= 1
       setCountdown(currentCount)
+      
+      // Send heartbeat to keep connection alive (especially for mobile browsers)
+      socket.emit('heartbeat', { roomId })
+      
       if (currentCount <= 0) {
         clearInterval(countdownIntervalRef.current!)
         countdownIntervalRef.current = null

@@ -408,6 +408,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle heartbeat (keep connection alive, especially during countdowns)
+  socket.on('heartbeat', ({ roomId }) => {
+    // Just acknowledge - this keeps the connection active during countdown periods
+    // Especially important for mobile browsers (Instagram, etc.) that aggressively suspend tabs
+  });
+
   // Handle skip battle
   socket.on('skip-battle', ({ roomId }) => {
     const room = activeRooms.get(roomId);
