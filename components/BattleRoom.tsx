@@ -134,18 +134,38 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
                startTimer(90) // 1:30 per round
                startAudioTimer() // Start 6-minute audio timer
                
-               // Start beat audio
-               if (audioRef.current) {
-                 console.log('Playing audio:', selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3")
-                 // Update audio source if needed
-                 const newSrc = selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3"
-                 if (audioRef.current.src !== window.location.origin + newSrc) {
-                   audioRef.current.src = newSrc
-                   audioRef.current.load()
-                 }
-                 audioRef.current.play()
-                 setIsAudioPlaying(true)
-               }
+              // Start beat audio with iOS Safari support
+              if (audioRef.current) {
+                console.log('🎵 Playing audio:', selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3")
+                // Update audio source if needed
+                const newSrc = selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3"
+                if (audioRef.current.src !== window.location.origin + newSrc) {
+                  audioRef.current.src = newSrc
+                  audioRef.current.load()
+                }
+                
+                // Attempt to play with error handling for iOS
+                const playPromise = audioRef.current.play()
+                if (playPromise !== undefined) {
+                  playPromise.then(() => {
+                    console.log('✅ Beat audio playing successfully')
+                    setIsAudioPlaying(true)
+                  }).catch((error) => {
+                    console.warn('⚠️ Audio autoplay blocked (iOS/Safari):', error)
+                    console.log('🔊 User must interact with page to start audio')
+                    setIsAudioPlaying(false)
+                    // Show alert to prompt user interaction
+                    setTimeout(() => {
+                      if (!audioRef.current?.paused) return // Already playing
+                      alert('🎵 Tap OK to start the beat! (Required for iOS)')
+                      audioRef.current?.play().then(() => {
+                        console.log('✅ Beat started after user interaction')
+                        setIsAudioPlaying(true)
+                      }).catch(e => console.error('❌ Still cannot play audio:', e))
+                    }, 500)
+                  })
+                }
+              }
              }
            }, 1000)
          }, 5000) // 5 second beat selection
@@ -262,10 +282,11 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
           globalTurnCountRef.current += 1
           console.log(`📊 Switch ${globalTurnCountRef.current}/4 complete`)
           
-          // After first actual switch (turn 2), mark first round as complete (disables NEW WORDS button)
-          if (globalTurnCountRef.current === 2) {
+          // After SECOND actual switch (turn 3), mark first round as complete (disables NEW WORDS button)
+          // This gives both players a full turn to vote for new words
+          if (globalTurnCountRef.current === 3) {
             setIsFirstRound(false)
-            console.log('🏁 First round complete - NEW WORDS button now disabled')
+            console.log('🏁 First round complete (both players had a turn) - NEW WORDS button now disabled')
           }
           
           // Check if battle should end (4 switches total = initial + 3 more)
@@ -680,10 +701,11 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
         globalTurnCountRef.current += 1
         console.log(`📊 Switch ${globalTurnCountRef.current}/4 complete`)
         
-        // After first actual switch (turn 2), mark first round as complete (disables NEW WORDS button)
-        if (globalTurnCountRef.current === 2) {
+        // After SECOND actual switch (turn 3), mark first round as complete (disables NEW WORDS button)
+        // This gives both players a full turn to vote for new words
+        if (globalTurnCountRef.current === 3) {
           setIsFirstRound(false)
-          console.log('🏁 First round complete - NEW WORDS button now disabled')
+          console.log('🏁 First round complete (both players had a turn) - NEW WORDS button now disabled')
         }
         
         // Check if battle should end (4 switches total = initial + 3 more)
@@ -802,17 +824,22 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-roast-dark to-black">
       {/* Hidden audio elements */}
-      <audio ref={remoteAudioRef} />
+      <audio ref={remoteAudioRef} playsInline webkit-playsinline="true" />
              <audio 
                ref={audioRef} 
                src={selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3"} 
                loop 
+               playsInline
+               webkit-playsinline="true"
+               preload="auto"
                onError={(e) => {
                  console.log('Beat audio not found:', e.currentTarget.src)
                  console.log('Add your beat file to public/audio/')
                }}
-               onLoadStart={() => console.log('Loading audio:', selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3")}
-               onCanPlay={() => console.log('Audio can play:', selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3")}
+               onLoadStart={() => console.log('🎵 Loading audio:', selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3")}
+               onCanPlay={() => console.log('✅ Audio can play:', selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3")}
+               onPlay={() => console.log('▶️ Audio started playing')}
+               onPause={() => console.log('⏸️ Audio paused')}
              />
 
       {battleMode === 'waiting' && (
