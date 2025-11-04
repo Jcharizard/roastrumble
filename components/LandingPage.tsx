@@ -27,14 +27,14 @@ export default function LandingPage({ onStartBattle }: LandingPageProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 pb-32 bg-gradient-to-b from-roast-dark to-black relative">
       {/* Users Online Badge */}
-      <div className="absolute top-4 right-4 md:top-8 md:right-8 bg-roast-red/20 border-2 border-roast-red rounded-full px-4 py-2 md:px-6 md:py-3 animate-slide-up z-10">
+      <div className="absolute top-4 right-4 md:top-4 md:right-8 lg:top-6 lg:right-12 bg-roast-red/20 border-2 border-roast-red rounded-full px-4 py-2 md:px-6 md:py-3 animate-slide-up z-10">
         <p className="text-roast-cream font-bold text-sm md:text-base">
           🔥 <span className="text-xl md:text-2xl">{usersOnline}</span> <span className="text-xs md:text-sm">ONLINE</span>
         </p>
       </div>
 
       {/* Logo Section */}
-      <div className="text-center mb-8 md:mb-12 mt-20 md:mt-0 animate-slide-up">
+      <div className="text-center mb-8 md:mb-12 mt-20 md:mt-12 animate-slide-up">
         <div className="mb-6 md:mb-8">
           {/* Your logo image */}
           <div className="w-32 h-32 md:w-48 md:h-48 mx-auto bg-roast-red rounded-full flex items-center justify-center fire-effect overflow-hidden">
