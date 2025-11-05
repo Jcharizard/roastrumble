@@ -23,7 +23,7 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
   const [isMuted, setIsMuted] = useState(false)
   const [battleWords, setBattleWords] = useState<string[]>([])
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
-  const [beatVolume, setBeatVolume] = useState(1.0) // 100% default (changed from 0.1)
+  const [beatVolume, setBeatVolume] = useState(0.5) // 50% default
   const [voiceVolume, setVoiceVolume] = useState(1.0) // 100% default
   const [opponentVolume, setOpponentVolume] = useState(1.0) // 100% default (renamed from masterVolume)
   const [chatMessages, setChatMessages] = useState<Array<{id: string, user: string, message: string, timestamp: number}>>([])
@@ -38,7 +38,8 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
   const redirectIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [hasVotedNewWords, setHasVotedNewWords] = useState(false) // Track if I voted for new words
   const [opponentVotedNewWords, setOpponentVotedNewWords] = useState(false) // Track if opponent voted
-  const [isFirstRound, setIsFirstRound] = useState(true) // Track if we're in first round (before first switch)
+  const [wordsChangedCount, setWordsChangedCount] = useState(0) // Track how many times words have been changed (max 2)
+  const [voteLocked, setVoteLocked] = useState(false) // Prevent multiple votes in same round
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -242,6 +243,9 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
       // Reset voting state for next potential vote
       setHasVotedNewWords(false)
       setOpponentVotedNewWords(false)
+      // Increment words changed count
+      setWordsChangedCount(prev => prev + 1)
+      console.log(`📊 Words changed ${wordsChangedCount + 1}/2 times`)
     })
     socket.on('start-countdown', () => {
       console.log('🔄 Opponent initiated countdown - I\'m GAINING mic!')
@@ -282,12 +286,9 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
           globalTurnCountRef.current += 1
           console.log(`📊 Switch ${globalTurnCountRef.current}/4 complete`)
           
-          // After SECOND actual switch (turn 3), mark first round as complete (disables NEW WORDS button)
-          // This gives both players a full turn to vote for new words
-          if (globalTurnCountRef.current === 3) {
-            setIsFirstRound(false)
-            console.log('🏁 First round complete (both players had a turn) - NEW WORDS button now disabled')
-          }
+          // Unlock voting for the new round
+          setVoteLocked(false)
+          console.log('🔓 Vote unlocked for new round')
           
           // Check if battle should end (4 switches total = initial + 3 more)
           if (globalTurnCountRef.current >= 4) {
@@ -424,7 +425,7 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
         console.log('🔇 Mic DISABLED initially - will enable after first countdown for first player')
       }
 
-      // Create peer connection with better config for stability
+      // Create peer connection with better config for stability and cross-browser support
       const newPeer = new SimplePeer({
         initiator: isInitiator,
         stream: stream,
@@ -437,13 +438,16 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
             { urls: 'stun:stun3.l.google.com:19302' },
             { urls: 'stun:stun4.l.google.com:19302' }
           ],
+          iceTransportPolicy: 'all', // Allow both STUN and TURN candidates
+          bundlePolicy: 'max-bundle', // Use bundling for better performance
+          rtcpMuxPolicy: 'require', // Multiplex RTP and RTCP for better NAT traversal
           iceCandidatePoolSize: 10
         }
       })
 
       let hasSentOffer = false
       let candidateCount = 0
-      const maxCandidates = 5 // Limit candidates to prevent spam
+      const maxCandidates = 10 // Increased for better connection reliability
       
       newPeer.on('signal', (signal) => {
         if (!hasSentOffer && signal.type === 'offer') {
@@ -480,12 +484,15 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
 
       newPeer.on('error', (err) => {
         console.error('❌ WebRTC error:', err)
-        // Don't show alert immediately, try to reconnect
-        setTimeout(() => {
-          if (!newPeer.destroyed) {
-            console.log('Attempting to reconnect...')
-          }
-        }, 2000)
+        // Log error details for debugging
+        console.error('Error name:', err.name)
+        console.error('Error message:', err.message)
+        
+        // Don't immediately disconnect - some errors are recoverable
+        // The connection might still succeed with remaining ICE candidates
+        if (err.message?.includes('Ice connection failed') || err.message?.includes('Connection failed')) {
+          console.warn('⚠️ ICE connection issue detected - this may resolve automatically')
+        }
       })
 
       newPeer.on('close', () => {
@@ -701,12 +708,9 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
         globalTurnCountRef.current += 1
         console.log(`📊 Switch ${globalTurnCountRef.current}/4 complete`)
         
-        // After SECOND actual switch (turn 3), mark first round as complete (disables NEW WORDS button)
-        // This gives both players a full turn to vote for new words
-        if (globalTurnCountRef.current === 3) {
-          setIsFirstRound(false)
-          console.log('🏁 First round complete (both players had a turn) - NEW WORDS button now disabled')
-        }
+        // Unlock voting for the new round
+        setVoteLocked(false)
+        console.log('🔓 Vote unlocked for new round')
         
         // Check if battle should end (4 switches total = initial + 3 more)
         if (globalTurnCountRef.current >= 4) {
@@ -772,22 +776,23 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
   }
 
   const handleVoteNewWords = () => {
-    if (!isFirstRound) {
-      console.log('⚠️ Cannot vote for new words after first round')
+    // Check if max words changes reached (2)
+    if (wordsChangedCount >= 2) {
+      console.log('⚠️ Cannot vote for new words - max 2 changes per battle reached')
       return
     }
     
-    if (hasVotedNewWords) {
-      // Unvote
-      setHasVotedNewWords(false)
-      socket.emit('vote-new-words', { roomId, vote: false })
-      console.log('🗳️ Unvoted for new words')
-    } else {
-      // Vote
-      setHasVotedNewWords(true)
-      socket.emit('vote-new-words', { roomId, vote: true })
-      console.log('🗳️ Voted for new words')
+    // Check if already voted this round (prevent spam)
+    if (voteLocked) {
+      console.log('⚠️ Already voted this round - wait for next round to change vote')
+      return
     }
+    
+    // Lock vote for this round
+    setVoteLocked(true)
+    setHasVotedNewWords(true)
+    socket.emit('vote-new-words', { roomId, vote: true })
+    console.log('🗳️ Voted for new words (locked for this round)')
   }
 
   const sendMessage = () => {
@@ -1013,16 +1018,23 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
 
             <button
               onClick={handleVoteNewWords}
-              disabled={!isFirstRound}
+              disabled={wordsChangedCount >= 2}
               className={`px-8 py-4 rounded-lg font-bold text-lg transition-all ${
-                isFirstRound 
-                  ? hasVotedNewWords
-                    ? 'bg-roast-red border-2 border-roast-red text-roast-cream hover:bg-roast-red/80'
-                    : 'bg-roast-dark border-2 border-roast-red/50 text-roast-cream hover:border-roast-red'
-                  : 'bg-roast-dark/50 border-2 border-roast-cream/20 text-roast-cream/40 cursor-not-allowed'
+                wordsChangedCount >= 2
+                  ? 'bg-roast-dark/50 border-2 border-roast-cream/20 text-roast-cream/40 cursor-not-allowed'
+                  : hasVotedNewWords && opponentVotedNewWords
+                    ? 'bg-green-600 border-2 border-green-500 text-roast-cream'
+                    : hasVotedNewWords || opponentVotedNewWords
+                      ? 'bg-roast-red border-2 border-roast-red text-roast-cream hover:bg-roast-red/80'
+                      : 'bg-roast-dark border-2 border-roast-red/50 text-roast-cream hover:border-roast-red'
               }`}
             >
-              🔄 NEW WORDS {hasVotedNewWords || opponentVotedNewWords ? `${(hasVotedNewWords ? 1 : 0) + (opponentVotedNewWords ? 1 : 0)}/2` : '0/2'}
+              {wordsChangedCount >= 2 
+                ? '🔄 NEW WORDS (MAX REACHED)' 
+                : hasVotedNewWords && opponentVotedNewWords
+                  ? '✅ CHANGING NEXT ROUND!'
+                  : `🔄 NEW WORDS ${(hasVotedNewWords ? 1 : 0) + (opponentVotedNewWords ? 1 : 0)}/2`
+              }
             </button>
 
             <button
