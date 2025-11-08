@@ -456,8 +456,9 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
         } else if (signal.type === 'answer') {
           console.log('📤 Sending WebRTC answer to opponent')
           socket.emit('webrtc-signal', { roomId, signal })
-        } else if (signal.candidate || signal.type === 'candidate') {
+        } else {
           // CRITICAL FIX: Send ALL candidates (no limit!)
+          // Everything else is an ICE candidate or other signaling data
           // Each candidate is a potential connection path - we need all of them
           candidateCount++
           console.log(`📤 Sending ICE candidate #${candidateCount} to opponent`)
