@@ -447,25 +447,26 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
 
       let hasSentOffer = false
       let candidateCount = 0
-      const maxCandidates = 10 // Increased for better connection reliability
       
       newPeer.on('signal', (signal) => {
         if (!hasSentOffer && signal.type === 'offer') {
           hasSentOffer = true
-          console.log('Sending WebRTC offer to opponent')
+          console.log('📤 Sending WebRTC offer to opponent')
           socket.emit('webrtc-signal', { roomId, signal })
         } else if (signal.type === 'answer') {
-          console.log('Sending WebRTC answer to opponent')
+          console.log('📤 Sending WebRTC answer to opponent')
           socket.emit('webrtc-signal', { roomId, signal })
-        } else if (signal.type === 'candidate' && candidateCount < maxCandidates) {
+        } else if (signal.candidate || signal.type === 'candidate') {
+          // CRITICAL FIX: Send ALL candidates (no limit!)
+          // Each candidate is a potential connection path - we need all of them
           candidateCount++
-          console.log(`Sending WebRTC candidate ${candidateCount}/${maxCandidates} to opponent`)
+          console.log(`📤 Sending ICE candidate #${candidateCount} to opponent`)
           socket.emit('webrtc-signal', { roomId, signal })
         }
       })
 
       newPeer.on('connect', () => {
-        console.log('✅ WebRTC connection established!')
+        console.log('✅ WebRTC DATA CHANNEL established!')
       })
 
       newPeer.on('data', (data) => {
@@ -474,11 +475,35 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
 
       newPeer.on('stream', (remoteStream) => {
         console.log('✅ Receiving remote audio stream!')
+        console.log('📊 Remote stream tracks:', remoteStream.getTracks().length)
+        console.log('📊 Remote audio tracks:', remoteStream.getAudioTracks().length)
+        
+        if (remoteStream.getAudioTracks().length === 0) {
+          console.error('❌ Remote stream has NO audio tracks!')
+          return
+        }
+        
         if (remoteAudioRef.current) {
+          console.log('🔊 Attaching remote stream to audio element...')
           remoteAudioRef.current.srcObject = remoteStream
-          remoteAudioRef.current.play().catch(e => {
-            console.log('Audio autoplay prevented, user interaction needed')
-          })
+          
+          // iOS fix: Must call play() with promise handling
+          remoteAudioRef.current.play()
+            .then(() => {
+              console.log('✅ Remote audio playing successfully!')
+            })
+            .catch(e => {
+              console.warn('⚠️ Audio autoplay prevented, trying with user interaction...')
+              // Show alert to trigger user interaction for iOS
+              setTimeout(() => {
+                alert('🔊 Tap OK to hear your opponent!')
+                remoteAudioRef.current?.play()
+                  .then(() => console.log('✅ Remote audio started after user interaction'))
+                  .catch(err => console.error('❌ Still cannot play remote audio:', err))
+              }, 500)
+            })
+        } else {
+          console.error('❌ remoteAudioRef.current is null!')
         }
       })
 
@@ -496,8 +521,46 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
       })
 
       newPeer.on('close', () => {
-        console.log('WebRTC connection closed')
+        console.log('🔌 WebRTC connection closed')
       })
+      
+      // CRITICAL: Monitor ICE connection state changes for debugging
+      // This helps us see WHY connections fail
+      try {
+        // Access the underlying RTCPeerConnection for state monitoring
+        const pc = (newPeer as any)._pc
+        if (pc) {
+          pc.oniceconnectionstatechange = () => {
+            console.log('🧊 ICE connection state:', pc.iceConnectionState)
+            if (pc.iceConnectionState === 'failed') {
+              console.error('❌ ICE connection FAILED! Possible causes:')
+              console.error('  - Firewall blocking WebRTC')
+              console.error('  - Network restrictions (school/corporate)')
+              console.error('  - NAT traversal failed')
+              console.error('  - Missing STUN/TURN servers')
+            } else if (pc.iceConnectionState === 'disconnected') {
+              console.warn('⚠️ ICE connection DISCONNECTED! May reconnect automatically...')
+            } else if (pc.iceConnectionState === 'connected') {
+              console.log('✅ ICE connection CONNECTED!')
+            } else if (pc.iceConnectionState === 'completed') {
+              console.log('✅ ICE connection COMPLETED!')
+            }
+          }
+          
+          pc.onicegatheringstatechange = () => {
+            console.log('🧊 ICE gathering state:', pc.iceGatheringState)
+          }
+          
+          pc.onconnectionstatechange = () => {
+            console.log('🔗 Peer connection state:', pc.connectionState)
+            if (pc.connectionState === 'connected') {
+              console.log('✅ Peer connection ESTABLISHED! Audio should work now.')
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not access peer connection for state monitoring:', e)
+      }
 
       setPeer(newPeer)
       peerRef.current = newPeer
@@ -829,7 +892,16 @@ export default function BattleRoom({ nickname, roomId, socket, onLeave }: Battle
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-roast-dark to-black">
       {/* Hidden audio elements */}
-      <audio ref={remoteAudioRef} playsInline webkit-playsinline="true" />
+      <audio 
+        ref={remoteAudioRef} 
+        autoPlay 
+        playsInline 
+        webkit-playsinline="true"
+        onLoadedMetadata={() => console.log('🎵 Remote audio metadata loaded')}
+        onPlay={() => console.log('▶️ Remote audio playing')}
+        onPause={() => console.log('⏸️ Remote audio paused')}
+        onError={(e) => console.error('❌ Remote audio error:', e)}
+      />
              <audio 
                ref={audioRef} 
                src={selectedBeat ? `/audio/${selectedBeat}.mp3` : "/audio/hmm-freestyle-beat.mp3"} 
