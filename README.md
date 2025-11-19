@@ -28,6 +28,7 @@ NEXT_PUBLIC_SOCKET_SERVER_URL=http://localhost:3001
 ```
 PORT=3001
 CLIENT_URL=http://localhost:3000
+CLIENT_URL_WWW=http://localhost:3000  # For production: add www subdomain
 ```
 
 ## Deployment

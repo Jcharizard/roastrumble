@@ -11,11 +11,11 @@ const server = http.createServer(app);
 app.use(cors());
 
 // Allow both www and non-www versions of the domain
+// For production, set CLIENT_URL and CLIENT_URL_WWW environment variables
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://roastrumble.com',
-  'https://www.roastrumble.com',
-  process.env.CLIENT_URL
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URL_WWW
 ].filter(Boolean); // Remove any undefined values
 
 const io = new Server(server, {
